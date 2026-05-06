@@ -1,48 +1,61 @@
 package org.example.client;
 
 import org.example.client.console.ConsoleInputReader;
-import org.example.client.network.NonBlockingClientChannel;
-import org.example.common.command.CommandRequest;
-import org.example.common.command.CommandResponse;
-import org.example.common.model.Product;
+import org.example.common.model.Route;
+
+import java.io.*;
+import java.net.Socket;
+import java.util.Scanner;
 
 public class Client {
-    private final NonBlockingClientChannel channel;
-    private final ConsoleInputReader console = new ConsoleInputReader();
+    private final String host;
+    private final int port;
 
     public Client(String host, int port) {
-        this.channel = new NonBlockingClientChannel(host, port);
+        this.host = host;
+        this.port = port;
     }
 
-    public void startClient() {
-        System.out.println("Client started. Commands: add, show, clear, exit");
+    public void start() {
+        try (Socket socket = new Socket(host, port);
+             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             Scanner scanner = new Scanner(System.in)) {
 
-        while (true) {
-            String cmd = console.readInput("Enter command");
-            if ("exit".equalsIgnoreCase(cmd)) {
-                System.out.println("Exit");
-                break;
-            }
+            ConsoleInputReader reader = new ConsoleInputReader(scanner);
+            System.out.println("Connected to server!");
+            System.out.println("Type 'help' to see commands\n");
 
-            CommandRequest request;
-            if ("add".equalsIgnoreCase(cmd)) {
-                String name = console.readInput("Enter name");
-                request = new CommandRequest("add", new Object[]{name});
-            } else {
-                request = new CommandRequest(cmd, new Object[0]);
-            }
+            while (true) {
+                System.out.print("> ");
+                String cmd = scanner.nextLine().trim();
 
-            CommandResponse res = channel.sendCommand(request);
-            if (res != null) {
-                System.out.println("Result: " + res.getMessage());
-                // 这里的调用和上面的 getList() 对应
-                if (res.getList() != null) {
-                    for (Product p : res.getList()) {
-                        System.out.println(p);
+                if (cmd.equalsIgnoreCase("exit")) {
+                    System.out.println("Disconnecting...");
+                    break;
+                }
+
+                out.println(cmd);
+
+                if (cmd.equals("add") || cmd.startsWith("update") || cmd.equals("add_if_min")) {
+                    String ok = in.readLine();
+                    if (ok == null || !"OK".equals(ok)) {
+                        System.out.println("Server error: " + ok);
+                        continue;
                     }
+                    Route route = reader.readRoute();
+                    out.println(route);
+                }
+
+                String line;
+                while ((line = in.readLine()) != null) {
+                    if (line.isEmpty()) break;
+                    System.out.println(line);
                 }
             }
-            System.out.println("----------------------------------------");
+
+        } catch (Exception e) {
+            System.out.println("Connection closed: " + e.getMessage());
         }
     }
 }

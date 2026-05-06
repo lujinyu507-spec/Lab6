@@ -1,23 +1,28 @@
 package org.example.common.command;
 
+import org.example.common.model.Route;
 import java.io.Serializable;
 
 public class CommandRequest implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private final String command;
+    private final String arg;
+    private final Route route;
 
-    private String commandName;
-    private Object[] arguments; 
-
-    public CommandRequest(String commandName, Object[] arguments) {
-        this.commandName = commandName;
-        this.arguments = arguments;
+    public CommandRequest(String command, String arg, Route route) {
+        this.command = command;
+        this.arg = arg;
+        this.route = route;
     }
 
-    public String getCommandName() {
-        return commandName;
+    public String getCommand() {
+        return command;
     }
 
-    public Object[] getArguments() {
-        return arguments;
+    public String getArg() {
+        return arg;
+    }
+
+    public Route getRoute() {
+        return route;
     }
 }
